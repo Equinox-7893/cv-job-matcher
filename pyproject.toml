@@ -1,0 +1,21 @@
+[project]
+name = "cv-job-matcher"
+version = "0.1.0"
+description = "Explainable CV shortlisting tool that removes personal details before scoring"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+ner = ["spacy>=3.7"]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
