@@ -1,0 +1,30 @@
+Priya Raman
+Email: priya.raman.test@example.com | Mobile: 07700 900123
+LinkedIn: linkedin.com/in/priya-raman-test
+12 Example Road, Leeds, LS1 4AP
+Date of birth: 03/04/1998
+Nationality: Indian
+Marital status: Married
+NI number: QQ 12 34 56 C
+
+Personal statement
+I am a 27 years old data analyst. Priya enjoys turning messy data into clear reports.
+
+Work experience
+Data Analyst, Example Council, Sep 2021 - present
+- Built dashboards in Power BI and Python (pandas) for housing teams.
+- Wrote SQL queries against a PostgreSQL warehouse.
+Junior Analyst, Example Retail Ltd, Jun 2019 - Aug 2021
+- Automated weekly sales reports with Excel and VBA.
+Maternity leave, 2023
+
+Education
+BSc Mathematics, University of Example, graduated 2019
+St Mary's Catholic High School, A-levels 2016
+
+Interests
+President of the University Islamic Society
+Volunteer with Women in Data UK
+
+Referees
+Mr John Smith, Head of Analytics. He can be reached on +44 20 7946 0958.
