@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-REDACTOR_VERSION = "0.1.0"
+REDACTOR_VERSION = "0.2.0"
 
 # ---------------------------------------------------------------------------
 # Patterns
@@ -157,6 +157,24 @@ REFEREES_BLOCK = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Languages. Om's decision: the scorer sees how many languages a person
+# knows, not which ones, because the names can point to ethnic or national
+# origin. Works for "Languages: English, Tamil" and for a "Languages"
+# heading followed by one language per line.
+LANGUAGES_LINE = re.compile(
+    r"^[ \t]*languages?(?:[ \t]+spoken)?[ \t]*:[ \t]*(?P<value>\S.*)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+LANGUAGES_BLOCK = re.compile(
+    r"^[ \t]*languages?(?:[ \t]+spoken)?[ \t]*\n(?P<value>(?:[ \t]*\S.*(?:\n|$))+)",
+    re.IGNORECASE | re.MULTILINE,
+)
+LANGUAGE_LEVEL_WORDS = re.compile(
+    r"\s*[(\[]?\b(?:native(?:\s+speaker)?|mother\s+tongue|first\s+language|"
+    r"bilingual)\b[)\]]?",
+    re.IGNORECASE,
+)
+
 # A header line that looks like a person's name: 2 to 4 capitalised words,
 # no digits, nothing else on the line.
 NAME_LINE = re.compile(
@@ -190,6 +208,9 @@ class RedactionResult:
     text: str
     counts: dict[str, int] = field(default_factory=dict)
     version: str = REDACTOR_VERSION
+    # Profile and portfolio links taken out of the scorer's text. The
+    # recruiter sees them at the review stage. Never logged.
+    recruiter_only_links: list[str] = field(default_factory=list)
 
     @property
     def log_record(self) -> dict:
@@ -216,6 +237,7 @@ def redact(
     today: date | None = None,
     remove_proxy_lines: bool = True,
     use_spacy: bool = False,
+    keep_language_names: bool = False,
 ) -> RedactionResult:
     """Return CV text with personal details replaced by placeholders.
 
@@ -224,6 +246,9 @@ def redact(
         characteristic (for example a faith society or "maternity leave").
     use_spacy: also run spaCy's named entity recogniser for PERSON names.
         Needs `pip install spacy` and `python -m spacy download en_core_web_sm`.
+    keep_language_names: keep which languages a person speaks (only words
+        like "native" are dropped). Use this only when the job advert needs a
+        specific language, for example a Welsh-speaking post.
     """
     today = today or date.today()
     spans: list[Span] = []
@@ -247,6 +272,17 @@ def redact(
         for sp in spans
         if sp.label in SENSITIVE_FIELDS
     }
+
+    # 1c. Languages become a count (or keep names, without "native").
+    for pattern in (LANGUAGES_BLOCK, LANGUAGES_LINE):
+        for m in pattern.finditer(text):
+            value = m.group("value")
+            trailing_nl = "\n" if value.endswith("\n") else ""
+            if keep_language_names:
+                new = LANGUAGE_LEVEL_WORDS.sub("", value)
+            else:
+                new = f"[{_count_languages(value)} languages]{trailing_nl}"
+            spans.append(Span(m.start("value"), m.end("value"), "LANGUAGES", new))
 
     # 2. Name in the header, then every later mention of the same words.
     name_tokens = _find_header_name(text)
@@ -276,7 +312,10 @@ def redact(
             spans.append(Span(m.start(), m.end(), label, f"[{label}]"))
 
     kept = _resolve_overlaps(spans)
-    return RedactionResult(text=_apply(text, kept), counts=_count(kept))
+    links = [text[s.start : s.end] for s in kept if s.label == "URL"]
+    return RedactionResult(
+        text=_apply(text, kept), counts=_count(kept), recruiter_only_links=links
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -293,6 +332,19 @@ def _find_header_name(text: str, max_lines: int = 5) -> set[str]:
             # Each word on its own, so "Priya" alone is caught later on.
             return {w for w in m.group("name").split() if len(w) > 1}
     return set()
+
+
+def _count_languages(value: str) -> int:
+    """Count items in "English (fluent), Tamil; French" or a bullet list."""
+    items = re.split(r"[,;/\n]|\band\b", value)
+    names = set()
+    for item in items:
+        item = re.sub(r"[(\[].*?[)\]]", "", item)      # drop "(fluent)"
+        item = re.sub(r"^[\s\-*•–]+", "", item).strip()  # drop bullets
+        item = re.split(r"\s*[-–:]\s*", item)[0]        # "French - basic"
+        if item:
+            names.add(item.split()[0].lower())
+    return len(names)
 
 
 def _spacy_person_tokens(text: str) -> set[str]:

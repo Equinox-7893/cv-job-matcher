@@ -14,6 +14,7 @@ Work experience
 Data Analyst, Example Council, Sep 2021 - present
 - Built dashboards in Power BI and Python (pandas) for housing teams.
 - Wrote SQL queries against a PostgreSQL warehouse.
+Portfolio: https://priya-raman-test.example.dev
 Junior Analyst, Example Retail Ltd, Jun 2019 - Aug 2021
 - Automated weekly sales reports with Excel and VBA.
 Maternity leave, 2023
@@ -21,6 +22,8 @@ Maternity leave, 2023
 Education
 BSc Mathematics, University of Example, graduated 2019
 St Mary's Catholic High School, A-levels 2016
+
+Languages: English (fluent), Tamil (native), French (basic)
 
 Interests
 President of the University Islamic Society

@@ -31,6 +31,8 @@ PLANTED = [
     "priya.raman.test@example.com",            # email
     "07700 900123", "+44 20 7946 0958",        # phones
     "linkedin.com/in/priya-raman-test",        # profile link
+    "priya-raman-test.example.dev",            # portfolio link
+    "Tamil", "French", "native",               # language names (origin proxy)
     "12 Example Road", "Leeds", "LS1 4AP",     # address
     "03/04/1998", "27 years old",              # date of birth, age
     "Indian", "Married",                       # nationality, marital status
@@ -129,3 +131,29 @@ def test_uk_postcodes(postcode):
 )
 def test_proxy_rule_does_not_hit_ordinary_words(line):
     assert line in redact(line).text
+
+
+def test_languages_become_a_count(redacted):
+    assert "Languages: [3 languages]" in redacted.text
+
+
+def test_language_count_from_bullet_list():
+    text = "Languages\n- Welsh (first language)\n- English\n- Spanish - basic\n"
+    assert redact(text).text == "Languages\n[3 languages]\n"
+
+
+def test_language_names_kept_when_job_needs_them():
+    text = "Languages: Welsh (first language), English"
+    out = redact(text, keep_language_names=True).text
+    assert "Welsh" in out and "English" in out
+    assert "first language" not in out
+
+
+def test_links_go_to_recruiter_not_scorer_or_logs(redacted):
+    assert redacted.recruiter_only_links == [
+        "linkedin.com/in/priya-raman-test",
+        "https://priya-raman-test.example.dev",
+    ]
+    for link in redacted.recruiter_only_links:
+        assert link not in redacted.text
+        assert link not in str(redacted.log_record)

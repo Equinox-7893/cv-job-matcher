@@ -1,6 +1,6 @@
 # Privacy step: removing personal details before scoring
 
-Status: first version (v0.1). Items marked **[Guess]** are my assumptions and need checking. Items marked **[Decision for Om]** are open choices.
+Status: v0.2. Om's decisions on universities, languages and links are recorded below. Items marked **[Guess]** are my assumptions and need checking. Items marked **[Decision for Om]** are open choices.
 
 ## Why this step exists
 
@@ -50,7 +50,7 @@ Rules:
 | Email | Regex | `[EMAIL]` |
 | Phone (UK formats) | Regex | `[PHONE]` |
 | Home address | Any line holding a UK postcode, plus `Address:` lines | `[ADDRESS]` |
-| Profile links (LinkedIn, GitHub, personal sites) | Regex | `[URL]` |
+| Profile links (LinkedIn, GitHub, portfolio sites) | Regex. The links are kept in `recruiter_only_links` for the review stage. | `[URL]` |
 | National Insurance number | Regex | `[NI_NUMBER]` |
 | Photo | Dropped at text extraction | nothing |
 | Referees | Whole "References" / "Referees" section | `[REFEREES REMOVED]` |
@@ -68,6 +68,7 @@ Referees are removed because they are other people's personal data and they say 
 | Religion | `Religion: ...` | `[RELIGION]` |
 | Health, disability | `Health: ...` | `[HEALTH]` |
 | Visa or right to work | `Visa status: Tier 2` | `[VISA]` |
+| Which languages someone speaks | `Languages: English (fluent), Tamil (native)` | `[2 languages]` |
 
 Right to work is a real requirement for UK employers, but it is a yes/no check the recruiter does separately. It should not change a skills score.
 
@@ -75,7 +76,7 @@ Right to work is a real requirement for UK employers, but it is a yes/no check t
 
 A proxy is a detail that is not a protected characteristic itself but points strongly to one. The model can learn these patterns even when the obvious fields are gone.
 
-| Proxy | What it can reveal | What v0.1 does |
+| Proxy | What it can reveal | What v0.2 does |
 |---|---|---|
 | Graduation and school years | Age | Lone years become `[YEAR]` |
 | Job date ranges | Age (indirectly) | `Sep 2021 - present` becomes `[5 years]` |
@@ -90,18 +91,21 @@ The proxy list is in `PROXY_TERMS` in `src/cv_matcher/privacy/redactor.py`. Term
 
 Years of experience are kept as durations on purpose. Some jobs genuinely need experience, and the scorer needs it. But total experience still correlates with age. If the job advert asks for experience, the scoring should cap it (for example "3+ years" scores the same for 3 or 20 years) and the README should say why. This belongs in the scoring design, so I have only flagged it here.
 
-### Open decisions
+### Decisions made (Om, 2026-11-23)
 
-- **[Decision for Om] University names.** A university's name can act as a proxy for social background and, through international universities, for nationality. My suggestion: keep degree subject and class (they are relevant), and replace the institution with `[UNIVERSITY]` by default, with a setting to keep it. Not done in v0.1.
-- **[Decision for Om] Languages.** "Fluent Polish" may be a job skill, but "native Urdu speaker" points to ethnic origin. My suggestion: keep languages as skills and drop the words "native" and "mother tongue". Not done in v0.1.
-- **[Decision for Om] GitHub and portfolio links.** They are evidence of skill, but they identify the person. My suggestion: remove them from the scorer's text and show them to the recruiter at the review stage.
-- **Locations of past jobs.** "Data Analyst, Lagos" can point to nationality. v0.1 does not remove place names outside addresses. The optional NER pass could do this.
+- **University names stay visible.** Degree subject, class and institution all go to the scorer. The README should mention that institution names can act as a proxy for social background, and that the evaluation checks scores across universities.
+- **Languages become a count.** The scorer sees `[3 languages]`, not which languages, because language names can point to ethnic or national origin. Words like "native" and "mother tongue" go too. When a job needs a specific language, such as a Welsh-speaking post in Wales, the pipeline calls `redact(..., keep_language_names=True)`: the names stay and only the "native" style words are removed.
+- **Links are hidden from the scorer and shown to the recruiter later.** GitHub, LinkedIn and portfolio links become `[URL]` in the scorer's text. The original links are returned in `RedactionResult.recruiter_only_links`, so the review screen can show them next to the shortlist. They are never written to logs.
+
+### Still open
+
+- **Locations of past jobs.** "Data Analyst, Lagos" can point to nationality. v0.2 does not remove place names outside addresses. The optional NER pass could do this.
 
 ## Tools
 
-The v0.1 prototype uses **only regex and the Python standard library.** It runs in Colab with no downloads and is easy to test and explain. That makes it a sensible base layer. It will miss things, so the plan is to add layers:
+The prototype uses **only regex and the Python standard library.** It runs in Colab with no downloads and is easy to test and explain. That makes it a sensible base layer. It will miss things, so the plan is to add layers:
 
-| Layer | Tool | Good at | Weak at | In v0.1? |
+| Layer | Tool | Good at | Weak at | In v0.2? |
 |---|---|---|---|---|
 | 1 | Regex rules | Emails, phones, postcodes, NI numbers, dates, labelled fields | Names in free text, anything without a fixed shape | Yes |
 | 2 | spaCy NER (`en_core_web_sm`, or `en_core_web_trf` for better accuracy) | Person names, places, organisations in free text | Over-redacts some tech names. Needs a model download. | Optional (`use_spacy=True`) |
@@ -116,7 +120,7 @@ For the LLM layer, my suggestion is to run it **only on already-redacted text**,
 
 All test data is synthetic. No real CV goes in the repo.
 
-1. **Planted-detail tests (leak tests).** Write fake CVs with known personal details planted in them, then check that none of those exact strings appear in the output. `tests/test_redactor.py` does this for one CV with 24 planted items. Next step: generate a few hundred CVs with [Faker](https://faker.readthedocs.io/) using the `en_GB` locale, so names, phones and postcodes vary.
+1. **Planted-detail tests (leak tests).** Write fake CVs with known personal details planted in them, then check that none of those exact strings appear in the output. `tests/test_redactor.py` does this for one CV with 28 planted items. Next step: generate a few hundred CVs with [Faker](https://faker.readthedocs.io/) using the `en_GB` locale, so names, phones and postcodes vary.
 2. **Over-redaction tests.** Check that job-relevant words survive: `Python`, `SQL`, `Power BI`, `BSc Mathematics` and so on. A redactor that deletes everything would pass the leak tests and be useless.
 3. **Counterfactual test.** Take one CV and change only the identity details (name, date of birth, nationality, marital status). The redacted text should be identical. If it is, the scorer cannot tell those candidates apart on those details. This test is in the suite and passes. Later, the same idea applies to the whole pipeline: the final score should not change.
 4. **Metrics for the report.** On the larger synthetic set, measure per entity type:
@@ -139,9 +143,9 @@ The rule: **logs hold counts and versions, never CV text or removed values.**
 
 ```json
 {
-  "redactor_version": "0.1.0",
-  "removed_counts": {"EMAIL": 1, "NAME": 3, "PHONE": 1, "PROXY": 4},
-  "total_removed": 20
+  "redactor_version": "0.2.0",
+  "removed_counts": {"EMAIL": 1, "LANGUAGES": 1, "NAME": 3, "URL": 2, "PROXY": 4},
+  "total_removed": 22
 }
 ```
 
@@ -153,7 +157,7 @@ The pipeline adds the candidate ID and a timestamp when it writes the record. Ot
 - Raw CV text and files get a retention period (for example deleted 6 months after the role is filled). **[Guess]** The right period depends on the organisation's policy. The README should say it is configurable and give the example as an example.
 - The `total_removed` count is useful as a warning sign: a CV with 0 items removed probably means extraction failed or the format is unusual, and it should be checked by a person.
 
-## Known limits of v0.1
+## Known limits of v0.2
 
 - Names are only found reliably in the header. A name that appears only in the body is missed unless `use_spacy=True`.
 - Two-word headings that are not in the `NOT_A_NAME` list could be treated as a name. This over-redacts but does not leak.
