@@ -84,7 +84,9 @@ Step 4 matters twice. It lets us test the anonymiser (did it remove every plante
 Every (advert, CV) pair needs a relevance score from 0 to 3. We get it in two ways:
 
 1. **Built-in label:** the target level from generation (section 4, step 1).
-2. **Human label:** Om reads a sample and scores it without seeing the built-in label. Start with 60 pairs (6 per advert). **[question for Om]** could a classmate also label the same 60, so we can report agreement between two people (Cohen's kappa)? That makes the evaluation much more convincing to an employer.
+2. **Human label:** Om reads a sample and scores it without seeing the built-in label. Start with 60 pairs (6 per advert). We then report how often Om agrees with the built-in label.
+
+**Optional later step:** if a classmate can score the same 60 pairs, we can report agreement between two people (Cohen's kappa). This makes the evaluation more convincing to an employer, but the plan works without it.
 
 If human and built-in labels disagree, the human label wins and we note it.
 
@@ -146,9 +148,17 @@ The phone number uses Ofcom's 07700 900xxx range, which is reserved for fiction,
 
 If we later want results on real CVs, Om can ask the university (for example the careers service or a supervisor) for access. Before asking, have answers ready for: what data, why, how it is stored, who sees it, and that nothing will be published. That data would live only in `data/external/`, and the README would report summary numbers only. **[question for Om]** do we need this at all for v1? My suggestion is no: synthetic plus CareerCorpus is enough for a portfolio project.
 
-## 9. Open questions
+## 9. Decisions made
 
-1. **[question for Om]** Which job families should the 10 adverts cover? Suggestion: 4 data or digital roles (Data Analyst, Data Scientist, Software Developer, Digital Product Manager), 4 UK public sector roles (Policy Adviser, Operational Delivery Officer, Finance Business Partner, HR Adviser), and 2 others (Teacher, Nurse) to test that the system is not only good at tech CVs.
-2. **[question for Om]** Which LLM for generation? Options: a free local model in Colab, or an API model. API quality is better, but it costs a little money.
-3. **[check]** Exact ESCO licence wording, and the licence on the Kaggle page for the resume dataset.
-4. **[check]** DWP Find a Job API terms, before any live job adverts feature.
+**Job adverts (decided 23 Nov 2026).** The 10 adverts cover:
+
+- Data and digital: Data Analyst, Data Scientist, Software Developer, Digital Product Manager
+- UK public sector: Policy Adviser, Operational Delivery Officer, Finance Business Partner, HR Adviser
+- Others: Teacher, Nurse. These test that the system is not only good at tech CVs.
+
+**Generation model (decided 23 Nov 2026).** We use a free, open model run in Google Colab, with no paid API. On the free Colab GPU (a T4 with about 15 GB of memory), a 7 to 8 billion parameter instruction model loaded in 4-bit fits, for example Qwen2.5-7B-Instruct or Llama 3.1 8B Instruct. **[check]** which runs fastest on Om's Colab and whose licence allows publishing the text it writes. Generating 200 CVs will take a while on a T4, so the script saves after each CV and can resume if Colab disconnects. The same local model can also do the skill extraction step later, which keeps the whole project free to run.
+
+## 10. Open questions
+
+1. **[check]** Exact ESCO licence wording, and the licence on the Kaggle page for the resume dataset.
+2. **[check]** DWP Find a Job API terms, before any live job adverts feature.
